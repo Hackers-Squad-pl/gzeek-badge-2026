@@ -1,0 +1,15 @@
+# Device clients may request schedules/speech, but cannot forge server replies.
+user mqtt
+topic write /gzeek/prelekcje
+topic write gzeek/prelekcja_audio/sala_a
+topic write gzeek/prelekcja_audio/sala_b
+topic write gzeek/prelekcja_audio/sala_warsztat
+
+# Service account has the inverse permissions.
+user gzeek-server
+topic read /gzeek/prelekcje
+topic read gzeek/prelekcja_audio/+
+topic write gzeek/odpowiedz/+/#
+
+# Patterns apply to all users. Replies are readable only for the MQTT client id.
+pattern read gzeek/odpowiedz/%c/#

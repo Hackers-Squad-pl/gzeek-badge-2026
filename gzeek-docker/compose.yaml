@@ -1,0 +1,101 @@
+name: gzeek
+services:
+  auth-init:
+    image: eclipse-mosquitto:2.0
+    user: "0:0"
+    entrypoint: ["/bin/sh", "/bootstrap/init-auth.sh"]
+    network_mode: none
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=8m,mode=1777
+    cap_drop: [ALL]
+    cap_add: [CHOWN, DAC_OVERRIDE, FOWNER]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./docker/init-auth.sh:/bootstrap/init-auth.sh:ro
+      - mqtt_auth:/auth
+      - audio_cache:/audio-cache
+    secrets:
+      - mqtt_password
+    restart: "no"
+    logging:
+      driver: json-file
+      options: {max-size: "5m", max-file: "2"}
+
+  mqtt:
+    image: eclipse-mosquitto:2.0
+    user: "1883:1883"
+    entrypoint: ["mosquitto"]
+    command: ["-c", "/mosquitto/config/mosquitto.conf"]
+    depends_on:
+      auth-init: {condition: service_completed_successfully}
+    ports:
+      - "${MQTT_BIND_IP:-10.42.0.1}:${MQTT_PORT:-1883}:1883"
+    volumes:
+      - ./docker/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - ./docker/acl:/mosquitto/config/acl:ro
+      - mqtt_auth:/auth:ro
+    networks: [ingress, backend]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=8m"]
+    pids_limit: 32
+    mem_limit: 128m
+    cpus: "0.50"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+  schedule:
+    build: ./server
+    user: "10001:10001"
+    init: true
+    command:
+      - --host
+      - mqtt
+      - --username
+      - gzeek-server
+      - --schedule
+      - /data/harmonogram.json
+      - --cache
+      - /cache
+      - --timezone
+      - Europe/Warsaw
+      - --voice
+      - "${GZ_VOICE:-pl}"
+    environment:
+      GZ_MQTT_PASSWORD_FILE: /auth/server_password
+    depends_on:
+      auth-init: {condition: service_completed_successfully}
+      mqtt: {condition: service_started}
+    volumes:
+      - ./data:/data:ro
+      - audio_cache:/cache
+      - mqtt_auth:/auth:ro
+    networks: [backend]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid,size=64m,mode=1777"]
+    pids_limit: 64
+    mem_limit: 384m
+    cpus: "1.0"
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
+secrets:
+  mqtt_password:
+    file: ./secrets/mqtt_password.txt
+volumes:
+  mqtt_auth:
+  audio_cache:
+networks:
+  ingress:
+    driver: bridge
+  backend:
+    driver: bridge
+    internal: true

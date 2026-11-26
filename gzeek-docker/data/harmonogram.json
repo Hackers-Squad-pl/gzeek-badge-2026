@@ -1,0 +1,26 @@
+{
+  "A": [
+    {
+      "start": "10:00",
+      "end": "10:15",
+      "Prelekcja": "Mało oficjalne otwarcie",
+      "prelegent": "Organizatorzy"
+    }
+  ],
+  "B": [
+    {
+      "start": "10:00",
+      "end": "10:15",
+      "Prelekcja": "Mało oficjalne otwarcie",
+      "prelegent": "Organizatorzy"
+    }
+  ],
+  "warsztat": [
+    {
+      "start": "10:00",
+      "end": "12:00",
+      "Prelekcja": "A2-3:test ",
+      "prelegent": "Prelegent"
+    }
+   ]
+}
